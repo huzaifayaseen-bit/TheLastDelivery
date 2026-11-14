@@ -23,6 +23,7 @@ namespace TheLastDelivery.Player
 
         private CharacterController controller;
         private Rigidbody rigidbodyComponent;
+        private CapsuleCollider capsuleCollider;
         private Animator animatorComponent;
         private PlayerInput playerInput;
         private InputAction moveAction;
@@ -33,7 +34,7 @@ namespace TheLastDelivery.Player
         private Transform cam;
         private bool isGrounded;
         private bool wasGrounded;
-        private float horizontalSpeed;
+        private bool isLandingIsTrigger;
         private CollisionDetectionMode groundedCollisionDetectionMode;
         private Vector3? currentGrapplePoint;
 
@@ -51,12 +52,8 @@ namespace TheLastDelivery.Player
         {
             get
             {
-                if (IsSwinging)
-                {
-                    Vector3 velocity = rigidbodyComponent.velocity;
-                    return new Vector3(velocity.x, 0f, velocity.z).magnitude;
-                }
-                return horizontalSpeed;
+                Vector3 currentVelocity = Velocity;
+                return new Vector3(currentVelocity.x, 0f, currentVelocity.z).magnitude;
             }
         }
 
@@ -67,6 +64,8 @@ namespace TheLastDelivery.Player
         {
             controller = GetComponent<CharacterController>();
             rigidbodyComponent = GetComponent<Rigidbody>();
+            capsuleCollider = GetComponent<CapsuleCollider>();
+            if (capsuleCollider != null) capsuleCollider.enabled = false;
             animatorComponent = GetComponentInChildren<Animator>();
             playerInput = GetComponent<PlayerInput>();
             groundedCollisionDetectionMode = rigidbodyComponent.collisionDetectionMode;
@@ -80,6 +79,18 @@ namespace TheLastDelivery.Player
             isGroundedHash = Animator.StringToHash(AnimatorParameterNames.IsGrounded);
             isSwingingHash = Animator.StringToHash(AnimatorParameterNames.IsSwinging);
             isLandingHash = Animator.StringToHash(AnimatorParameterNames.IsLanding);
+
+            if (animatorComponent != null && animatorComponent.runtimeAnimatorController != null)
+            {
+                foreach (AnimatorControllerParameter param in animatorComponent.parameters)
+                {
+                    if (param.nameHash == isLandingHash)
+                    {
+                        isLandingIsTrigger = (param.type == AnimatorControllerParameterType.Trigger);
+                        break;
+                    }
+                }
+            }
 
             if (playerInput != null && playerInput.actions != null)
             {
@@ -97,8 +108,7 @@ namespace TheLastDelivery.Player
             if (!IsSwinging)
             {
                 CheckGrounded();
-                HandleLocomotion();
-                HandleJumpAndGravity();
+                HandleLocomotionAndJump();
             }
             else
             {
@@ -120,7 +130,7 @@ namespace TheLastDelivery.Player
             isGrounded = controller.isGrounded || sphereGrounded;
         }
 
-        private void HandleLocomotion()
+        private void HandleLocomotionAndJump()
         {
             Vector2 rawInput = moveAction != null
                 ? moveAction.ReadValue<Vector2>()
@@ -131,29 +141,27 @@ namespace TheLastDelivery.Player
             Vector3 moveDir = (camForward * rawInput.y + camRight * rawInput.x);
 
             float currentSpeed = isGrounded ? moveSpeed : moveSpeed * airSteerMultiplier;
-            horizontalSpeed = 0f;
+            Vector3 horizontalMove = Vector3.zero;
 
             if (moveDir.sqrMagnitude >= 0.01f)
             {
                 moveDir.Normalize();
                 Quaternion targetRot = Quaternion.LookRotation(moveDir, Vector3.up);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
-
-                controller.Move(moveDir * (currentSpeed * Time.deltaTime));
-                horizontalSpeed = currentSpeed;
+                horizontalMove = moveDir * currentSpeed;
             }
 
             if (externalVelocity.sqrMagnitude > 0.01f)
             {
-                controller.Move(externalVelocity * Time.deltaTime);
-                horizontalSpeed = Mathf.Max(horizontalSpeed, new Vector3(externalVelocity.x, 0f, externalVelocity.z).magnitude);
+                horizontalMove += externalVelocity;
                 float drag = isGrounded ? 8f : 1.2f;
                 externalVelocity = Vector3.Lerp(externalVelocity, Vector3.zero, drag * Time.deltaTime);
+                if (externalVelocity.sqrMagnitude <= 0.01f)
+                {
+                    externalVelocity = Vector3.zero;
+                }
             }
-        }
 
-        private void HandleJumpAndGravity()
-        {
             if (isGrounded && verticalVelocity.y < 0f)
             {
                 verticalVelocity.y = groundedGravity;
@@ -166,7 +174,9 @@ namespace TheLastDelivery.Player
             }
 
             verticalVelocity.y += gravity * Time.deltaTime;
-            controller.Move(verticalVelocity * Time.deltaTime);
+
+            Vector3 totalMove = horizontalMove + verticalVelocity;
+            controller.Move(totalMove * Time.deltaTime);
         }
 
         private void UpdateAnimator()
@@ -178,7 +188,17 @@ namespace TheLastDelivery.Player
             animatorComponent.SetFloat(verticalVelocityHash, Velocity.y);
             animatorComponent.SetBool(isGroundedHash, isGrounded);
             animatorComponent.SetBool(isSwingingHash, IsSwinging);
-            animatorComponent.SetBool(isLandingHash, isLanding);
+            if (isLandingIsTrigger)
+            {
+                if (isLanding)
+                {
+                    animatorComponent.SetTrigger(isLandingHash);
+                }
+            }
+            else
+            {
+                animatorComponent.SetBool(isLandingHash, isLanding);
+            }
             wasGrounded = isGrounded;
         }
 
@@ -195,6 +215,7 @@ namespace TheLastDelivery.Player
             Vector3 inheritedVelocity = controller.velocity + externalVelocity;
             externalVelocity = Vector3.zero;
             controller.enabled = false;
+            if (capsuleCollider != null) capsuleCollider.enabled = true;
 
             rigidbodyComponent.position = transform.position;
             rigidbodyComponent.isKinematic = false;
@@ -209,6 +230,7 @@ namespace TheLastDelivery.Player
         {
             if (!IsSwinging) return;
 
+            if (capsuleCollider != null) capsuleCollider.enabled = false;
             rigidbodyComponent.velocity = Vector3.zero;
             rigidbodyComponent.angularVelocity = Vector3.zero;
             rigidbodyComponent.isKinematic = true;

@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "skills": {
+    "ui-ugui": {
+      "source": "Unity-Technologies/skills",
+      "sourceType": "github",
+      "skillPath": "skills/ui-ugui/SKILL.md",
+      "computedHash": "8ee643988bae2db0c69808c0cf790b819b23eb4ca68d159da3a01404e2f48240"
+    },
+    "unity-animation": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/unity/unity-animation/SKILL.md",
+      "computedHash": "a386c3152eb91c9bad6f3ea2f8956511a15c9851a08ad63c49efd54ec1c9ed3b"
+    },
+    "unity-csharp-scripting": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/unity/unity-csharp-scripting/SKILL.md",
+      "computedHash": "faebf524fafd23ad2c81f2b3e68a5a39a194fd3ba253fae62328a418fa1bff6c"
+    },
+    "unity-input-system": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/unity/unity-input-system/SKILL.md",
+      "computedHash": "194902ff61daae1f5d5ba5d1aa6bc0c51daf84111434f9f9652167a154944650"
+    },
+    "unity-physics": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/unity/unity-physics/SKILL.md",
+      "computedHash": "52c6ebe2118eacbf2a6b54d7027252b88392a296ad55be30a400496197a268ae"
+    }
+  }
+}
